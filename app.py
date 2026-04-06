@@ -1,125 +1,83 @@
 # =========================
-# IMPORT LIBRARIES
+# IMPORTS
 # =========================
 
-import streamlit as st  
-# Streamlit → used to build interactive web dashboard UI (no frontend required)
-
-import numpy as np  
-# NumPy → used for matrix operations (images are stored as pixel arrays)
-
-import matplotlib.pyplot as plt  
-# Matplotlib → used for plotting graphs (histogram, intensity profile)
-
-import cv2  
-# OpenCV → main computer vision library
-# used for:
-# - grayscale conversion
-# - edge detection
-# - filtering
-# - transformations
-# - histogram equalization
-
-from PIL import Image  
-# PIL → used to load images easily and convert formats
+import streamlit as st          # UI framework
+import numpy as np             # for matrix/image operations
+import matplotlib.pyplot as plt # for graphs
+import cv2                     # OpenCV for image processing
+from PIL import Image          # image loading
 
 
 # =========================
-# PAGE CONFIGURATION
+# PAGE SETUP
 # =========================
 
 st.set_page_config(page_title="Image Analysis Lab", layout="wide")
-# Sets dashboard title and wide layout (better visualization)
 
-st.title("IDSA PROJECT - Image Analysis Dashboard")
-# Main heading
-
+st.title("Image Analysis Dashboard")
 
 st.markdown("""
-## 📊 Image Processing & Analysis Dashboard
-
-This dashboard demonstrates:
-
-### 🔹 Transformations
-- Grayscale, Rotate, Flip, Transpose
-
-### 🔹 Enhancement
-- Histogram Equalization
-- Brightness & Contrast
-
-### 🔹 Filtering
-- Mean, Median, Gaussian
-
-### 🔹 Feature Detection
-- Canny Edge Detection
-- Sobel Edge Detection
-
-### 🔹 Analysis
-- Histogram
-- FFT Spectrum
-- Intensity Profile
-- ROI Analysis
+Upload an image and explore different image processing techniques interactively.
 """)
 
 
 # =========================
-# SIDEBAR (INPUT CONTROLS)
+# SIDEBAR INPUT
 # =========================
 
 st.sidebar.header("Upload Image")
 
 image_file = st.sidebar.file_uploader(
-    "Upload Image",
-    type=["png","jpg","jpeg","bmp"]
+    "Choose an image",
+    type=["png", "jpg", "jpeg", "bmp"]
 )
-# Allows user to upload image → returns file object
 
+st.sidebar.header("Analysis Options")
 
-st.sidebar.header("Analysis Tools")
-
-show_histogram = st.sidebar.checkbox("Show Image Histogram", True)
-show_fft_image = st.sidebar.checkbox("Show Image Frequency Spectrum")
-show_intensity_profile = st.sidebar.checkbox("Show Intensity Profile")
-show_roi_analysis = st.sidebar.checkbox("Enable ROI Analysis")
+show_histogram = st.sidebar.checkbox("Histogram", True)
+show_fft_image = st.sidebar.checkbox("FFT Spectrum")
+show_intensity_profile = st.sidebar.checkbox("Intensity Profile")
+show_roi_analysis = st.sidebar.checkbox("ROI Analysis")
 
 
 # =========================
 # MAIN DASHBOARD
 # =========================
 
-st.header("Image Processing Dashboard")
+st.header("Processing")
 
 if image_file:
 
-    # =========================
+    # -------------------------
     # LOAD IMAGE
-    # =========================
+    # -------------------------
 
-    img = Image.open(image_file).convert("RGB")
-    # Load image → convert to RGB (ensures 3 channels)
+    img = Image.open(image_file).convert("RGB")  
+    # convert to RGB → ensures consistent 3 channels
 
-    img_np = np.array(img)
-    # Convert image into NumPy array
-    # Shape = (height, width, channels)
+    img_np = np.array(img)  
+    # convert image → numpy array (height, width, channels)
 
     st.image(img, caption="Original Image", use_container_width=True)
 
-    # =========================
+    # -------------------------
     # IMAGE INFO
-    # =========================
+    # -------------------------
 
-    st.subheader("Image Information")
-    st.write("Resolution:", img_np.shape[1], "x", img_np.shape[0])
-    st.write("Channels:", img_np.shape[2])
+    st.subheader("Image Info")
+
+    st.write(f"Resolution: {img_np.shape[1]} x {img_np.shape[0]}")
+    st.write(f"Channels: {img_np.shape[2]}")
 
     st.divider()
 
-    # =========================
+    # -------------------------
     # OPERATION SELECTOR
-    # =========================
+    # -------------------------
 
     operation = st.radio(
-        "Select Operation",
+        "Choose Operation",
         [
             "Grayscale","Rotate","Flip","Transpose","Matrix Info",
             "Histogram Equalization","Edge Detection","Sobel Edge",
@@ -129,253 +87,237 @@ if image_file:
         horizontal=True
     )
 
-
-# =========================
-# GRAYSCALE
-# =========================
+    # =========================
+    # OPERATIONS
+    # =========================
 
     if operation == "Grayscale":
 
+        st.info("Grayscale converts the image into a single intensity channel.")
+
         gray = cv2.cvtColor(img_np, cv2.COLOR_RGB2GRAY)
-        # Converts RGB image → grayscale (1 channel)
 
-        col1,col2 = st.columns(2)
-        col1.image(img,caption="Original")
-        col2.image(gray,caption="Grayscale")
+        col1, col2 = st.columns(2)
+        col1.image(img)
+        col2.image(gray)
 
-
-# =========================
-# ROTATE
-# =========================
 
     elif operation == "Rotate":
 
-        angle = st.select_slider("Rotation Angle", options=[45,90,180,270])
+        st.info("Image is rotated using a transformation matrix around its center.")
 
-        h,w = img_np.shape[:2]
+        angle = st.select_slider("Angle", [45, 90, 180, 270])
 
-        matrix = cv2.getRotationMatrix2D((w/2,h/2),angle,1)
-        # Create rotation matrix using center + angle
+        h, w = img_np.shape[:2]
 
-        rotated = cv2.warpAffine(img_np,matrix,(w,h))
-        # Apply transformation
+        # rotation matrix centered at image center
+        matrix = cv2.getRotationMatrix2D((w/2, h/2), angle, 1)
 
-        col1,col2 = st.columns(2)
+        # apply rotation
+        rotated = cv2.warpAffine(img_np, matrix, (w, h))
+
+        col1, col2 = st.columns(2)
         col1.image(img)
-        col2.image(rotated,caption=f"Rotated {angle}°")
+        col2.image(rotated)
 
-
-# =========================
-# FLIP
-# =========================
 
     elif operation == "Flip":
 
-        flip_type = st.radio("Flip Direction", ["Horizontal","Vertical"], horizontal=True)
+        st.info("Flipping mirrors the image horizontally or vertically.")
 
-        if flip_type == "Horizontal":
-            flipped = np.fliplr(img_np)   # left-right flip
-        else:
-            flipped = np.flipud(img_np)   # up-down flip
+        direction = st.radio("Direction", ["Horizontal", "Vertical"], horizontal=True)
 
-        col1,col2 = st.columns(2)
+        flipped = np.fliplr(img_np) if direction == "Horizontal" else np.flipud(img_np)
+
+        col1, col2 = st.columns(2)
         col1.image(img)
-        col2.image(flipped,caption=f"{flip_type} Flip")
+        col2.image(flipped)
 
-
-# =========================
-# TRANSPOSE
-# =========================
 
     elif operation == "Transpose":
 
-        transposed = np.transpose(img_np,(1,0,2))
-        # Swap height and width
+        st.info("Transpose swaps image axes (width becomes height).")
 
-        col1,col2 = st.columns(2)
+        # swap axes
+        transposed = np.transpose(img_np, (1, 0, 2))
+
+        col1, col2 = st.columns(2)
         col1.image(img)
-        col2.image(transposed,caption="Transposed")
+        col2.image(transposed)
 
-
-# =========================
-# MATRIX INFO
-# =========================
 
     elif operation == "Matrix Info":
+
+        st.info("Displays raw matrix structure of the image.")
 
         st.write("Shape:", img_np.shape)
         st.write("Height:", img_np.shape[0])
         st.write("Width:", img_np.shape[1])
-        st.write("Channels:", img_np.shape[2])
 
-
-# =========================
-# HISTOGRAM EQUALIZATION
-# =========================
 
     elif operation == "Histogram Equalization":
 
+        st.info("Improves contrast by spreading pixel intensity values.")
+
         gray = cv2.cvtColor(img_np, cv2.COLOR_RGB2GRAY)
-        equalized = cv2.equalizeHist(gray)
-        # Improves contrast by spreading intensity values
 
-        col1,col2 = st.columns(2)
+        # spreads intensity values → better contrast
+        eq = cv2.equalizeHist(gray)
+
+        col1, col2 = st.columns(2)
         col1.image(gray)
-        col2.image(equalized)
+        col2.image(eq)
 
-
-# =========================
-# EDGE DETECTION (CANNY)
-# =========================
 
     elif operation == "Edge Detection":
 
+        st.info("Canny detects edges using gradients and thresholding.")
+
         gray = cv2.cvtColor(img_np, cv2.COLOR_RGB2GRAY)
 
-        edges = cv2.Canny(gray,100,200)
-        # Multi-step edge detection algorithm
+        # thresholds define edge sensitivity
+        edges = cv2.Canny(gray, 100, 200)
 
-        col1,col2 = st.columns(2)
+        col1, col2 = st.columns(2)
         col1.image(img)
         col2.image(edges)
 
 
-# =========================
-# SOBEL EDGE
-# =========================
-
     elif operation == "Sobel Edge":
+
+        st.info("Sobel detects edges in horizontal and vertical directions.")
 
         gray = cv2.cvtColor(img_np, cv2.COLOR_RGB2GRAY)
 
+        # gradient in x direction
         sobelx = cv2.Sobel(gray, cv2.CV_64F, 1, 0)
+
+        # gradient in y direction
         sobely = cv2.Sobel(gray, cv2.CV_64F, 0, 1)
 
-        col1,col2,col3 = st.columns(3)
+        col1, col2, col3 = st.columns(3)
         col1.image(gray)
         col2.image(sobelx)
         col3.image(sobely)
 
 
-# =========================
-# ADD NOISE
-# =========================
-
     elif operation == "Add Noise":
 
-        noise_level = st.slider("Noise Level",0,50,20)
+        st.info("Adds Gaussian noise to simulate distortion.")
 
-        noise = np.random.normal(0,noise_level,img_np.shape)
-        noisy = np.clip(img_np + noise,0,255).astype(np.uint8)
+        level = st.slider("Noise Level", 0, 50, 20)
 
-        col1,col2 = st.columns(2)
+        # generate noise
+        noise = np.random.normal(0, level, img_np.shape)
+
+        # clip to valid range (0–255)
+        noisy = np.clip(img_np + noise, 0, 255).astype(np.uint8)
+
+        col1, col2 = st.columns(2)
         col1.image(img)
         col2.image(noisy)
 
-
-# =========================
-# DENOISE
-# =========================
 
     elif operation == "Denoise Image":
 
-        noise = np.random.normal(0,20,img_np.shape)
-        noisy = np.clip(img_np + noise,0,255).astype(np.uint8)
+        st.info("Removes noise while preserving important details.")
 
-        denoise = cv2.fastNlMeansDenoisingColored(noisy,None,10,10,7,21)
+        noise = np.random.normal(0, 20, img_np.shape)
+        noisy = np.clip(img_np + noise, 0, 255).astype(np.uint8)
 
-        col1,col2,col3 = st.columns(3)
+        # advanced denoising algorithm
+        clean = cv2.fastNlMeansDenoisingColored(noisy, None, 10, 10, 7, 21)
+
+        col1, col2, col3 = st.columns(3)
         col1.image(img)
         col2.image(noisy)
-        col3.image(denoise)
+        col3.image(clean)
 
-
-# =========================
-# BRIGHTNESS & CONTRAST
-# =========================
 
     elif operation == "Brightness / Contrast":
+
+        st.info("Adjusts brightness and contrast using linear scaling.")
 
         alpha = st.slider("Contrast", 0.5, 3.0, 1.0)
         beta = st.slider("Brightness", -100, 100, 0)
 
+        # new_pixel = alpha * pixel + beta
         adjusted = cv2.convertScaleAbs(img_np, alpha=alpha, beta=beta)
 
-        col1,col2 = st.columns(2)
+        col1, col2 = st.columns(2)
         col1.image(img)
         col2.image(adjusted)
 
 
-# =========================
-# BLUR COMPARISON
-# =========================
-
     elif operation == "Blur Comparison":
 
-        mean = cv2.blur(img_np,(5,5))
-        gaussian = cv2.GaussianBlur(img_np,(5,5),0)
-        median = cv2.medianBlur(img_np,5)
+        st.info("Different filters smooth the image in different ways.")
 
-        col1,col2,col3,col4 = st.columns(4)
+        mean = cv2.blur(img_np, (5, 5))
+        gauss = cv2.GaussianBlur(img_np, (5, 5), 0)
+        median = cv2.medianBlur(img_np, 5)
+
+        col1, col2, col3, col4 = st.columns(4)
         col1.image(img)
         col2.image(mean)
-        col3.image(gaussian)
+        col3.image(gauss)
         col4.image(median)
 
 
-# =========================
-# THRESHOLDING
-# =========================
-
     elif operation == "Thresholding":
+
+        st.info("Converts image into binary using a threshold value.")
 
         gray = cv2.cvtColor(img_np, cv2.COLOR_RGB2GRAY)
 
-        thresh_val = st.slider("Threshold",0,255,127)
-        _, thresh = cv2.threshold(gray, thresh_val,255,cv2.THRESH_BINARY)
+        t = st.slider("Threshold", 0, 255, 127)
 
-        col1,col2 = st.columns(2)
+        _, thresh = cv2.threshold(gray, t, 255, cv2.THRESH_BINARY)
+
+        col1, col2 = st.columns(2)
         col1.image(gray)
         col2.image(thresh)
 
 
-# =========================
-# COLOR CHANNELS
-# =========================
-
     elif operation == "Color Channels":
 
-        r,g,b = cv2.split(img_np)
+        st.info("Splits image into Red, Green, and Blue components.")
 
-        col1,col2,col3 = st.columns(3)
+        r, g, b = cv2.split(img_np)
+
+        col1, col2, col3 = st.columns(3)
         col1.image(r)
         col2.image(g)
         col3.image(b)
 
 
-# =========================
-# GLOBAL ANALYSIS
-# =========================
+    # =========================
+    # ANALYSIS
+    # =========================
 
     if show_histogram:
 
+        st.info("Histogram shows distribution of pixel intensities.")
+
         fig, ax = plt.subplots()
 
-        for i,color in enumerate(["r","g","b"]):
-            hist = cv2.calcHist([img_np],[i],None,[256],[0,256])
-            ax.plot(hist,color=color)
+        for i, c in enumerate(["r", "g", "b"]):
+            hist = cv2.calcHist([img_np], [i], None, [256], [0, 256])
+            ax.plot(hist, color=c)
 
         st.pyplot(fig)
 
 
     if show_fft_image:
 
+        st.info("FFT converts image into frequency domain.")
+
         gray = cv2.cvtColor(img_np, cv2.COLOR_RGB2GRAY)
 
         f = np.fft.fft2(gray)
         fshift = np.fft.fftshift(f)
 
-        spectrum = 20*np.log(np.abs(fshift)+1)
+        spectrum = 20 * np.log(np.abs(fshift) + 1)
 
         fig, ax = plt.subplots()
         ax.imshow(spectrum, cmap="inferno")
@@ -386,36 +328,41 @@ if image_file:
 
     if show_intensity_profile:
 
+        st.info("Shows pixel intensity variation across the image.")
+
         gray = cv2.cvtColor(img_np, cv2.COLOR_RGB2GRAY)
 
-        mid_row = gray[gray.shape[0]//2]
+        row = gray[gray.shape[0] // 2]
 
         fig, ax = plt.subplots()
-        ax.plot(mid_row)
+        ax.plot(row)
 
         st.pyplot(fig)
 
 
     if show_roi_analysis:
 
-        h,w = img_np.shape[:2]
+        st.info("ROI allows analysis of a selected part of the image.")
 
-        x = st.slider("X",0,w-1,0)
-        y = st.slider("Y",0,h-1,0)
+        h, w = img_np.shape[:2]
 
-        roi_w = st.slider("Width",50,min(400,w))
-        roi_h = st.slider("Height",50,min(400,h))
+        x = st.slider("X", 0, w-1, 0)
+        y = st.slider("Y", 0, h-1, 0)
 
-        roi = img_np[y:y+roi_h, x:x+roi_w]
+        rw = st.slider("Width", 50, min(400, w))
+        rh = st.slider("Height", 50, min(400, h))
+
+        # extract region
+        roi = img_np[y:y+rh, x:x+rw]
 
         st.image(roi)
 
         gray_roi = cv2.cvtColor(roi, cv2.COLOR_RGB2GRAY)
 
         fig, ax = plt.subplots()
-        ax.hist(gray_roi.ravel(),bins=50)
+        ax.hist(gray_roi.ravel(), bins=50)
 
         st.pyplot(fig)
 
 else:
-    st.info("Upload an image to begin analysis")
+    st.info("Upload an image to start")
